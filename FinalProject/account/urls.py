@@ -4,10 +4,12 @@ from django.urls import path, include
 from FinalProject.account import views
 
 urlpatterns = [
-    # TODO this should be changed to index
     path('', views.index, name='dashboard'),
-    path('login/', auth_views.LoginView.as_view(), name='login'),
-    path('logout/', auth_views.LogoutView.as_view(), name='logout'),
+    # path('login/', views.SignInView.as_view(), name='login'),
+    path('login/', views.user_login, name='login'),
+    #path('logout/', auth_views.LogoutView.as_view(), name='logout'),
+    #path('logout/', views.SignOutView.as_view(), name='logout'),
+    path('logout/', views.user_logout, name='logout'),
     path('password_change/', auth_views.PasswordChangeView.as_view(), name='password_change'),
     path('password_change/done/', auth_views.PasswordChangeDoneView.as_view(), name='password_change_done'),
     path('password_reset/', auth_views.PasswordResetView.as_view(), name='password_reset'),

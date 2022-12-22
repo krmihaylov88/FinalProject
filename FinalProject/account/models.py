@@ -12,3 +12,12 @@ class Profile(models.Model):
 
     def __str__(self):
         return f'Profile for user {self.user.username}'
+
+
+class AccountData(models.Model):
+    username = models.CharField(max_length=30)
+    key = models.CharField(max_length=30)
+    value = models.CharField(max_length=300, null=True, blank=True)
+
+    class Meta:
+        unique_together = ('username', 'key')

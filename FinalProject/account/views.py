@@ -1,36 +1,68 @@
+import ast
+import copy
+import json
+
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.http import HttpResponse
-from django.shortcuts import render
-from django.contrib.auth import authenticate, login
-from .forms import LoginForm, UserRegistrationForm, UserEditForm, ProfileEditForm
-from .models import Profile
+from django.core import serializers
+from django.http import HttpResponseRedirect
+from django.shortcuts import render, redirect
+from django.contrib.auth import views as auth_views, authenticate, login, logout
+from django.urls import reverse_lazy
 
+from .forms import LoginForm, UserRegistrationForm, UserEditForm, ProfileEditForm
+from .models import Profile, AccountData
+from ..cart.cart import Cart
+
+
+# class SignInView(auth_views.LoginView):
+#     template_name = 'account/login.html'
 
 def user_login(request):
-    if request.method == 'POST':
-        form = LoginForm(request.POST)
-        if form.is_valid():
-            cd = form.cleaned_data
-            user = authenticate(request, username=cd['username'], password=cd['password'])
-            if user is not None:
-                if user.is_active:
-                    login(request, user)
-                return HttpResponse('Authenticated successfully')
-            else:
-                return HttpResponse('Disabled account')
-        else:
-            return HttpResponse('Invalid login')
+    form = LoginForm(request.POST)
+    if form.is_valid():
+        cd = form.cleaned_data
+        user = authenticate(request,
+                            username=cd['username'],
+                            password=cd['password'])
+        if user is not None:
+            if user.is_active:
+                login(request, user)
+                key = [key for key in request.session.keys() if key == 'cart']
+                # [print(f'{el} => {val}') for el,val in request.session.items()]
+                if AccountData.objects.get(username=cd['username'], key=key):
+                    record = AccountData.objects.get(username=cd['username'], key=key)
+                    res = ast.literal_eval(record.value)
+                    request.session['cart'] = res
+                return redirect('dashboard')
     else:
         form = LoginForm()
-
     context = {
         'form': form
     }
     return render(request, 'account/login.html', context)
 
 
-# TODO this should be changed to index
+# class SignOutView(auth_views.LogoutView):
+#     next_page = reverse_lazy('shop')
+
+def user_logout(request):
+    # [print(f'{el} => {val}') for el,val in request.session.items()]
+    username = request.user.username
+    key = [key for key in request.session.keys() if key == 'cart']
+    value = request.session.get('cart')
+    try:
+        record = AccountData.objects.get(username=username, key=key)
+        record.value = value
+        record.save()
+    except AccountData.DoesNotExist:
+        record = AccountData(username=username, key=key, value=value)
+        record.save()
+    logout(request)
+    return redirect('shop:product_list')
+
+
 @login_required
 def index(request):
     context = {
@@ -47,6 +79,11 @@ def register(request):
             new_user.set_password(user_form.cleaned_data['password'])
             new_user.save()
             Profile.objects.create(user=new_user)
+            for key in request.session.keys():
+                record = AccountData(username=request.POST['username'],
+                                     key=key,
+                                     value=str(request.session[key]))
+                record.save()
             context = {
                 'new_user': new_user,
             }
