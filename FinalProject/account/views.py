@@ -29,10 +29,9 @@ def user_login(request):
         if user is not None:
             if user.is_active:
                 login(request, user)
-                key = [key for key in request.session.keys() if key == 'cart']
                 # [print(f'{el} => {val}') for el,val in request.session.items()]
-                if AccountData.objects.get(username=cd['username'], key=key):
-                    record = AccountData.objects.get(username=cd['username'], key=key)
+                record = AccountData.objects.get(username=cd['username'])
+                if record:
                     res = ast.literal_eval(record.value)
                     request.session['cart'] = res
                 return redirect('dashboard')
@@ -79,11 +78,10 @@ def register(request):
             new_user.set_password(user_form.cleaned_data['password'])
             new_user.save()
             Profile.objects.create(user=new_user)
-            for key in request.session.keys():
-                record = AccountData(username=request.POST['username'],
-                                     key=key,
-                                     value=str(request.session[key]))
-                record.save()
+            key = [key for key in request.session.keys() if key == 'cart']
+            value = request.session.get('cart')
+            record = AccountData(username=request.POST['username'], key=key, value=value)
+            record.save()
             context = {
                 'new_user': new_user,
             }
